@@ -3,11 +3,11 @@
 Utility functions
 """
 
-import os
 import numbers
-from pathlib import Path
-import tempfile
+import os
 import subprocess
+import tempfile
+from pathlib import Path
 
 import numpy as np
 

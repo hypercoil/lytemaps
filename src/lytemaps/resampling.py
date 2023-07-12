@@ -10,7 +10,6 @@ from . import transforms
 from .datasets import ALIAS, DENSITIES
 from .images import load_gifti, load_nifti
 
-
 _resampling_docs = dict(
     resample_in="""\
 src, trg : str or os.PathLike or niimg_like or nib.GiftiImage or tuple

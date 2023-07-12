@@ -3,11 +3,11 @@
 Functions for working with triangle meshes + surfaces
 """
 
-from joblib import Parallel, delayed
 import numpy as np
+from joblib import Parallel, delayed
 from scipy import ndimage, sparse
 
-from .images import load_gifti, relabel_gifti, PARCIGNORE
+from .images import PARCIGNORE, load_gifti, relabel_gifti
 
 
 def point_in_triangle(point, triangle, return_pdist=True):

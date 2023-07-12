@@ -3,19 +3,20 @@
 Functions for fetching annotations (from the internet, if necessary)
 """
 
-from collections import defaultdict
-from pathlib import Path
 import re
 import shutil
-import numpy as np
 import warnings
+from collections import defaultdict
+from pathlib import Path
+
+import numpy as np
 
 from .utils import (
+    _fetch_file,
+    _get_session,
+    _get_token,
     get_data_dir,
     get_dataset_info,
-    _get_token,
-    _get_session,
-    _fetch_file
 )
 
 MATCH = re.compile(

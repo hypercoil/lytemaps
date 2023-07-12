@@ -3,11 +3,11 @@
 Functions for fetching datasets (from the internet, if necessary)
 """
 
-from collections import namedtuple
 import os
+from collections import namedtuple
 from pathlib import Path
 
-from .utils import get_data_dir, get_dataset_info, _fetch_files, Bunch
+from .utils import Bunch, _fetch_files, get_data_dir, get_dataset_info
 
 SURFACE = namedtuple('Surface', ('L', 'R'))
 ALIAS = dict(

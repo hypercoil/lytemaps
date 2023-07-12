@@ -3,9 +3,9 @@
 CARET files I/O
 """
 
-from io import BytesIO
 import re
 import struct
+from io import BytesIO
 
 import nibabel as nib
 import numpy as np

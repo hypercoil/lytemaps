@@ -3,17 +3,18 @@
 Contains helper code for running spatial nulls models
 """
 
-from pathlib import Path
 import warnings
+from pathlib import Path
 
 import numpy as np
 from scipy import optimize, spatial
+
 try:  # scipy >= 1.8.0
     from scipy.ndimage._measurements import _stats, labeled_comprehension
 except ImportError:  # scipy < 1.8.0
     from scipy.ndimage.measurements import _stats, labeled_comprehension
 
-from ..images import load_gifti, PARCIGNORE
+from ..images import PARCIGNORE, load_gifti
 from ..points import _geodesic_parcel_centroid
 from ..utils import check_random_state
 
@@ -247,7 +248,7 @@ def gen_spinsamples(coords, hemiid, n_rotate=1000, check_duplicates=True,
     resampling array after each spin. Unfortunately, this can (with some
     frequency) lead to multiple coordinates being re-assigned the same value:
 
-        >>> from minnmaps.nulls.spins import gen_spinsamples
+        >>> from lytemaps.nulls.spins import gen_spinsamples
         >>> coords = [[0, 0, 1], [1, 0, 0], [0, 0, 1], [1, 0, 0]]
         >>> hemi = [0, 0, 1, 1]
         >>> gen_spinsamples(coords, hemi, n_rotate=1, seed=1,

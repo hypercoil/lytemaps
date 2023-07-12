@@ -6,7 +6,9 @@ Functions for statistical analyses
 from functools import partial
 
 import numpy as np
-from scipy import special, stats as sstats
+from scipy import special
+from scipy import stats as sstats
+
 try:
     from scipy.stats._stats_py import _chk2_asarray  # scipy >= 1.8.0
 except ImportError:

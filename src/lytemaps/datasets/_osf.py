@@ -3,9 +3,10 @@
 Functions for working with data/osf.json file
 """
 
-import os
-from pkg_resources import resource_filename
 import json
+import os
+
+from pkg_resources import resource_filename
 
 from .utils import _get_session, _md5_sum_file
 
@@ -24,7 +25,7 @@ INFO_KEYS = ['source', 'refs', 'comments', 'demographics']
 
 # distribution JSON
 OSFJSON = resource_filename(
-    'minnmaps', os.path.join('datasets', 'data', 'osf.json')
+    'lytemaps', os.path.join('datasets', 'data', 'osf.json')
 )
 
 
@@ -248,7 +249,7 @@ def check_missing_keys(fname, root='annotations'):
     """
     Checks whether data in `fname` JSON are missing required keys
 
-    Required keys are specified in ``minnmaps.datasets._osf.MINIMAL_KEYS``
+    Required keys are specified in ``lytemaps.datasets._osf.MINIMAL_KEYS``
 
     Parameters
     ----------
@@ -278,7 +279,7 @@ def check_missing_keys(fname, root='annotations'):
 
     if is_missing_keys:
         raise KeyError('Data in provided `fname` are missing some keys. '
-                       'Please use `minnmaps.datasets._osf.complete_json`'
+                       'Please use `lytemaps.datasets._osf.complete_json`'
                        ' to fill missing keys')
 
     return info

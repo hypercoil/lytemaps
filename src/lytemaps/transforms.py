@@ -10,11 +10,15 @@ import nibabel as nib
 import numpy as np
 from scipy.interpolate import interpn
 
-from .datasets import (ALIAS, DENSITIES, fetch_atlas,
-                       fetch_regfusion, get_atlas_dir)
-from .images import (construct_shape_gii, load_gifti, load_nifti,
-                     load_data)
-from .utils import tmpname, run
+from .datasets import (
+    ALIAS,
+    DENSITIES,
+    fetch_atlas,
+    fetch_regfusion,
+    get_atlas_dir,
+)
+from .images import construct_shape_gii, load_data, load_gifti, load_nifti
+from .utils import run, tmpname
 
 METRICRESAMPLE = 'wb_command -metric-resample {metric} {src} {trg} ' \
                  'ADAP_BARY_AREA {out} -area-metrics {srcarea} {trgarea} ' \

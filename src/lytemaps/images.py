@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Iterable
 
 import nibabel as nib
-from nibabel.filebasedimages import ImageFileError
 import numpy as np
+from nibabel.filebasedimages import ImageFileError
 from scipy.interpolate import griddata
 
 PARCIGNORE = [
@@ -446,7 +446,7 @@ def relabel_gifti(parcellation, background=None, offset=None):
         If provided, a list of IDs in `parcellation` that should be set to 0
         (the presumptive background value). Other IDs will be shifted so they
         are consecutive (i.e., 0--N). If not specified will use labels in
-        `minnmaps.images.PARCIGNORE`. Default: None
+        `lytemaps.images.PARCIGNORE`. Default: None
     offset : int, optional
         What the lowest value in `parcellation[1]` should be not including
         background value. If not specified it will be purely consecutive from
@@ -516,7 +516,7 @@ def annot_to_gifti(parcellation, background=None):
         If provided, a list of IDs in `parcellation` that should be set to 0
         (the presumptive background value). Other IDs will be shifted so they
         are consecutive (i.e., 0--N). If not specified will use labels in
-        `minnmaps.images.PARCIGNORE`. Default: None
+        `lytemaps.images.PARCIGNORE`. Default: None
 
     Returns
     -------

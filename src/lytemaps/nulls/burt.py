@@ -6,8 +6,8 @@ Implementation of surrogate map generation as in Burt et al., 2018, Nat Neuro
 import warnings
 
 import numpy as np
-from scipy.optimize import least_squares
 from scipy import sparse as ssp
+from scipy.optimize import least_squares
 from scipy.stats import boxcox
 
 

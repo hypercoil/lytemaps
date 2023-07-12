@@ -15,9 +15,9 @@ import time
 import urllib
 import warnings
 import zipfile
-from pkg_resources import resource_filename
 
 import requests
+from pkg_resources import resource_filename
 
 RESTRICTED = ["grh4d"]
 
@@ -84,7 +84,7 @@ def get_dataset_info(name, return_restricted=True):
         Information on requested data
     """
 
-    fn = resource_filename('minnmaps',
+    fn = resource_filename('lytemaps',
                            os.path.join('datasets', 'data', 'osf.json'))
     with open(fn) as src:
         osf_resources = _osfify_urls(json.load(src), return_restricted)
@@ -576,8 +576,9 @@ def _fetch_files(data_dir, files, resume=True, verbose=1, session=None):
         temp_target_file = os.path.join(temp_dir, file_)
         # Whether to keep existing files
         overwrite = opts.get('overwrite', False)
-        if (abort is None and (overwrite or (not os.path.exists(target_file) and not
-                os.path.exists(temp_target_file)))):
+        if (abort is None and
+                (overwrite or (not os.path.exists(target_file) and
+                not os.path.exists(temp_target_file)))):
 
             # We may be in a global read-only repository. If so, we cannot
             # download files.
@@ -649,9 +650,18 @@ class Bunch(dict):
             )
         return super().__getitem__(key)
 
-    def _set_deprecated(self, value, *, new_key, deprecated_key, warning_message):
+    def _set_deprecated(
+        self,
+        value,
+        *,
+        new_key,
+        deprecated_key,
+        warning_message,
+    ):
         """Set key in dictionary to be deprecated with its warning message."""
-        self.__dict__["_deprecated_key_to_warnings"][deprecated_key] = warning_message
+        self.__dict__[
+            "_deprecated_key_to_warnings"
+        ][deprecated_key] = warning_message
         self[new_key] = self[deprecated_key] = value
 
     def __setattr__(self, key, value):

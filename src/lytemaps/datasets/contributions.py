@@ -3,11 +3,11 @@
 Workflow for adding new datasets to `neuromaps`
 """
 
-from base64 import b64encode
 import hashlib
 import os
-from pathlib import Path
 import warnings
+from base64 import b64encode
+from pathlib import Path
 
 import nibabel as nib
 import requests
