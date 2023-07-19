@@ -8,17 +8,17 @@ from pathlib import Path
 from typing import (
     Literal,
     Optional,
-    Union,
     Sequence,
     Tuple,
+    Union,
 )
 
 import nibabel as nib
 import numpy as np
 from scipy.interpolate import (
-    interpn,
     LinearNDInterpolator,
     NearestNDInterpolator,
+    interpn,
 )
 
 from .datasets import (
@@ -29,7 +29,7 @@ from .datasets import (
     get_atlas_dir,
 )
 from .images import construct_shape_gii, load_data, load_gifti, load_nifti
-from .utils import run, tmpname, get_coor, Tensor
+from .utils import Tensor, get_coor, run, tmpname
 
 METRICRESAMPLE = 'wb_command -metric-resample {metric} {src} {trg} ' \
                  'ADAP_BARY_AREA {out} -area-metrics {srcarea} {trgarea} ' \
@@ -274,8 +274,8 @@ def mni152_to_fsaverage(
         'fsaverage',
         fsavg_density,
         method=method,
-        threshold=threshold,
         mask=mask,
+        threshold=threshold,
     )
 
 
@@ -314,8 +314,8 @@ def mni152_to_fslr(
         'fsLR',
         fslr_density,
         method=method,
-        threshold=threshold,
         mask=mask,
+        threshold=threshold,
     )
 
 

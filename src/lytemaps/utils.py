@@ -12,7 +12,6 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-
 Tensor = Any # TODO: This should be the generic array type.
 
 
