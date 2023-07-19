@@ -5,10 +5,21 @@ Functionality for transforming files between spaces
 
 import os
 from pathlib import Path
+from typing import (
+    Literal,
+    Optional,
+    Union,
+    Sequence,
+    Tuple,
+)
 
 import nibabel as nib
 import numpy as np
-from scipy.interpolate import interpn
+from scipy.interpolate import (
+    interpn,
+    LinearNDInterpolator,
+    NearestNDInterpolator,
+)
 
 from .datasets import (
     ALIAS,
@@ -18,7 +29,7 @@ from .datasets import (
     get_atlas_dir,
 )
 from .images import construct_shape_gii, load_data, load_gifti, load_nifti
-from .utils import run, tmpname
+from .utils import run, tmpname, get_coor, Tensor
 
 METRICRESAMPLE = 'wb_command -metric-resample {metric} {src} {trg} ' \
                  'ADAP_BARY_AREA {out} -area-metrics {srcarea} {trgarea} ' \
@@ -88,7 +99,14 @@ def _estimate_density(data, hemi=None):
     return densities
 
 
-def _regfusion_project(data, ras, affine, method='linear'):
+def _regfusion_project(
+    data: Tensor,
+    ras: Tensor,
+    affine: Tensor,
+    method: Literal['linear', 'nearest'] = 'linear',
+    mask: Optional[Tensor] = None,
+    threshold: Optional[Union[float, int]] = None,
+) -> nib.GiftiImage:
     """
     Project `data` to `ras` space using regfusion
 
@@ -100,8 +118,17 @@ def _regfusion_project(data, ras, affine, method='linear'):
         Coordinates of surface points derived from registration fusion
     affine (4, 4) array_like
         Affine mapping `data` to `ras`-space coordinates
-    method : {'nearest', 'linear'}, optional
-        Method for projection. Default: 'linear'
+    mask: (X, Y, Z) array_like, optional
+        Mask for `data` to be projected to the surface. This can be used to
+        ensure that only data within a certain region is projected to the
+        surface, e.g. so that the surface isn't populated with zeros. `mask`
+        and `threshold` work only for 3D data at the moment.
+    threshold : float or int (default: None)
+        Value for quickly generating a mask for `data` to be projected to the
+        surface. If `mask` is not None, then `threshold` is ignored. `mask`
+        and `threshold` work only for 3D data at the moment.
+    method : {'nearest', 'linear'} (default: 'linear')
+        Method for projection.
 
     Returns
     -------
@@ -113,7 +140,21 @@ def _regfusion_project(data, ras, affine, method='linear'):
     coords = nib.affines.apply_affine(np.linalg.inv(affine), ras)
     volgrid = [range(data.shape[i]) for i in range(3)]
     if data.ndim == 3:
-        projected = interpn(volgrid, data, coords, method=method)
+        if threshold is None and mask is None:
+            projected = interpn(volgrid, data, coords, method=method)
+        else:
+            values, points = get_coor(
+                data,
+                affine,
+                mask=mask,
+                threshold=threshold,
+            )
+            if method == 'linear':
+                projected = LinearNDInterpolator(points, values)(coords)
+            elif method == 'nearest':
+                projected = NearestNDInterpolator(points, values)(coords)
+            else:
+                raise ValueError(f'Unknown method: {method}')
     elif data.ndim == 4:
         projected = np.column_stack([
             interpn(volgrid, data[..., n], coords, method=method)
@@ -123,7 +164,14 @@ def _regfusion_project(data, ras, affine, method='linear'):
     return construct_shape_gii(projected.squeeze())
 
 
-def _vol_to_surf(img, space, density, method='linear'):
+def _vol_to_surf(
+    img: Union[nib.Nifti1Image, os.PathLike, str],
+    space: str,
+    density: str,
+    method: Literal['linear', 'nearest'] = 'linear',
+    mask: Optional[Tensor] = None,
+    threshold: Optional[Union[float, int]] = None,
+) -> Sequence[Tuple[nib.GiftiImage, nib.GiftiImage]]:
     """
     Projects `img` to the surface defined by `space` and `density`
 
@@ -155,8 +203,15 @@ def _vol_to_surf(img, space, density, method='linear'):
     img = load_nifti(img)
     out = ()
     for ras in fetch_regfusion(space)[density]:
-        out += (_regfusion_project(img.get_fdata(), np.loadtxt(ras),
-                                   img.affine, method=method),)
+        out += (
+            _regfusion_project(
+                img.get_fdata(),
+                np.loadtxt(ras),
+                img.affine,
+                method=method,
+                mask=mask,
+                threshold=threshold,
+            ),)
 
     return out
 
@@ -188,7 +243,13 @@ def mni152_to_civet(img, civet_density='41k', method='linear'):
     return _vol_to_surf(img, 'civet', civet_density, method)
 
 
-def mni152_to_fsaverage(img, fsavg_density='41k', method='linear'):
+def mni152_to_fsaverage(
+    img: Union[nib.Nifti1Image, os.PathLike, str],
+    fsavg_density: Literal['3k', '10k', '41k', '164k'] = '41k',
+    method: Literal['linear', 'nearest'] = 'linear',
+    mask: Optional[Tensor] = None,
+    threshold: Optional[Union[float, int]] = None,
+) -> Tuple[nib.GiftiImage, nib.GiftiImage]:
     """
     Projects `img` in MNI152 space to fsaverage surface
 
@@ -208,10 +269,23 @@ def mni152_to_fsaverage(img, fsavg_density='41k', method='linear'):
         Projected `img` on fsaverage surface
     """
 
-    return _vol_to_surf(img, 'fsaverage', fsavg_density, method)
+    return _vol_to_surf(
+        img,
+        'fsaverage',
+        fsavg_density,
+        method=method,
+        threshold=threshold,
+        mask=mask,
+    )
 
 
-def mni152_to_fslr(img, fslr_density='32k', method='linear'):
+def mni152_to_fslr(
+    img: Union[nib.Nifti1Image, os.PathLike, str],
+    fslr_density: Literal['32k', '164k'] = '32k',
+    method: Literal['linear', 'nearest'] = 'linear',
+    mask: Optional[Tensor] = None,
+    threshold: Optional[Union[float, int]] = None,
+) -> Tuple[nib.GiftiImage, nib.GiftiImage]:
     """
     Projects `img` in MNI152 space to fsLR surface
 
@@ -235,7 +309,14 @@ def mni152_to_fslr(img, fslr_density='32k', method='linear'):
         raise NotImplementedError('Cannot perform registration fusion to '
                                   f'fsLR {fslr_density} space yet.')
 
-    return _vol_to_surf(img, 'fsLR', fslr_density, method)
+    return _vol_to_surf(
+        img,
+        'fsLR',
+        fslr_density,
+        method=method,
+        threshold=threshold,
+        mask=mask,
+    )
 
 
 def _check_hemi(data, hemi):

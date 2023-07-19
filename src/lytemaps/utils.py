@@ -8,8 +8,12 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any, Optional, Tuple
 
 import numpy as np
+
+
+Tensor = Any # TODO: This should be the generic array type.
 
 
 def tmpname(suffix, prefix=None, directory=None):
@@ -133,6 +137,35 @@ def check_fs_subjid(subject_id, subjects_dir=None):
                                 .format(subject_id, subjects_dir))
 
     return subject_id, subjects_dir
+
+
+def get_coor(
+    vol: Tensor,
+    affine: Tensor,
+    mask: Optional[Tensor] = None,
+    threshold: float = 0.0,
+) -> Tuple[Tensor, Tensor]:
+    """
+    Get coordinates of voxels in `vol` above `threshold`
+
+    Parameters
+    ----------
+    vol : array_like
+        3D volumetric data
+    affine : array_like
+        4x4 affine matrix
+    threshold : float (default: 0.0)
+        Threshold for `vol`. Default: 0
+    """
+    if mask is None:
+        mask = (vol > threshold)
+    loc = np.where(mask)
+
+    vol_coor = np.stack(loc)
+    return vol[loc], vol_coor.T
+    # return vol[loc], (affine @ np.concatenate(
+    #     (vol_coor, np.ones((1, vol_coor.shape[-1])))
+    # ))[:3].T
 
 
 def check_random_state(seed):
