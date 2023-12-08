@@ -4,18 +4,15 @@ Functions for fetching annotations (from the internet, if necessary)
 """
 
 import re
-import shutil
 import warnings
 from collections import defaultdict
-from pathlib import Path
+from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from .utils import (
-    _fetch_file,
-    _get_session,
-    _get_token,
-    get_data_dir,
+    ANNOTATIONS,
+    ANNOTATIONS_FNAMES,
     get_dataset_info,
 )
 
@@ -24,7 +21,10 @@ MATCH = re.compile(
 )
 
 
-def _groupby_match(fnames, return_single=False):
+def _groupby_match(
+    fnames: Sequence[str],
+    return_single: bool = False,
+) -> Mapping[Tuple[str, str, str, str], Union[str, List[str]]]:
     """"
     Groups files in `fnames` by (source, desc, space, res/den)
 
@@ -55,7 +55,7 @@ def _groupby_match(fnames, return_single=False):
     return out
 
 
-def _match_annot(info, **kwargs):
+def _match_annot(info: Mapping, **kwargs) -> List[Mapping]:
     """
     Matches datasets in `info` to relevant keys
 
@@ -110,9 +110,17 @@ def _match_annot(info, **kwargs):
     return out
 
 
-def available_annotations(source=None, desc=None, space=None, den=None,
-                          res=None, hemi=None, tags=None, format=None,
-                          return_restricted=False):
+def available_annotations(
+    source: Optional[Union[str, Sequence[str]]] = None,
+    desc: Optional[Union[str, Sequence[str]]] = None,
+    space: Optional[Union[str, Sequence[str]]] = None,
+    den: Optional[Union[str, Sequence[str]]] = None,
+    res: Optional[Union[str, Sequence[str]]] = None,
+    hemi: Optional[Union[str, Sequence[str]]] = None,
+    tags: Optional[Union[str, Sequence[str]]] = None,
+    format: Optional[Union[str, Sequence[str]]] = None,
+    return_restricted: bool = False,
+) -> List[str]:
     """
     Lists datasets available via :func:`~.fetch_annotation`
 
@@ -139,7 +147,7 @@ def available_annotations(source=None, desc=None, space=None, den=None,
     return list(_groupby_match(fnames, return_single=False).keys())
 
 
-def available_tags(return_restricted=False):
+def available_tags(return_restricted: bool = False) -> List[str]:
     """
     Returns available tags for querying annotations
 
@@ -163,9 +171,20 @@ def available_tags(return_restricted=False):
     return sorted(tags)
 
 
-def fetch_annotation(*, source=None, desc=None, space=None, den=None, res=None,
-                     hemi=None, tags=None, format=None, return_single=True,
-                     token=None, data_dir=None, verbose=1):
+def fetch_annotation(
+    *,
+    source: Optional[Union[str, Sequence[str]]] = None,
+    desc: Optional[Union[str, Sequence[str]]] = None,
+    space: Optional[Union[str, Sequence[str]]] = None,
+    den: Optional[Union[str, Sequence[str]]] = None,
+    res: Optional[Union[str, Sequence[str]]] = None,
+    hemi: Optional[Union[str, Sequence[str]]] = None,
+    tags: Optional[Union[str, Sequence[str]]] = None,
+    format: Optional[Union[str, Sequence[str]]] = None,
+    return_single: bool = True,
+    token: Optional[str] = None,
+    verbose: int = 1,
+) -> Mapping[Tuple[str, str, str, str], Union[str, List[str]]]:
     """
     Downloads files for brain annotations matching requested variables
 
@@ -182,10 +201,6 @@ def fetch_annotation(*, source=None, desc=None, space=None, den=None, res=None,
         also check the environmental variable 'NEUROMAPS_OSF_TOKEN' if not
         provided; if that is not set no token will be provided and restricted
         annotations will be inaccessible. Default: None
-    data_dir : str, optional
-        Path to use as data directory. If not specified, will check for
-        environmental variable 'NEUROMAPS_DATA'; if that is not set, will
-        use `~/neuromaps-data` instead. Default: None
     verbose : int, optional
         Modifies verbosity of download, where higher numbers mean more updates.
         Default: 1
@@ -209,29 +224,28 @@ def fetch_annotation(*, source=None, desc=None, space=None, den=None, res=None,
                          'match annotations. If you want to fetch all '
                          'annotations set any of the parameters to "all".')
 
-    # get info on datasets we need to fetch
-    token = _get_token(token=token)
-    return_restricted = False if (token is None or not token) else True
-    data_dir = get_data_dir(data_dir=data_dir)
-    info = _match_annot(get_dataset_info('annotations', return_restricted),
+    # TODO: We've removed support for tokens in our "lytemaps" fork of
+    #       neuromaps, but in principle it should be easy to add back in
+    #       as a simple header argument to Pooch.fetch(). The logistically
+    #       annoying part is creating a test dataset that requires a token to
+    #       access.
+    info = _match_annot(get_dataset_info('annotations'), #, return_restricted),
                         source=source, desc=desc, space=space, den=den,
                         res=res, hemi=hemi, tags=tags, format=format)
     if verbose > 1:
-        print(f'Identified {len(info)} datsets matching specified parameters')
+        print(f'Identified {len(info)} datasets matching specified parameters')
 
-    # get session for requests
-    session = _get_session(token=token)
-
-    # TODO: current work-around to handle that _fetch_files() does not support
-    # session instances. hopefully a future version will and we can just use
-    # that function to handle this instead of calling _fetch_file() directly
     data = []
     for dset in info:
-        fn = Path(data_dir) / 'annotations' / dset['rel_path'] / dset['fname']
-        if not fn.exists():
-            dl_file = _fetch_file(dset['url'], str(fn.parent), verbose=verbose,
-                                  md5sum=dset['checksum'], session=session)
-            shutil.move(dl_file, fn)
+        fname = ANNOTATIONS_FNAMES[(
+            dset.get('source'),
+            dset.get('desc'),
+            dset.get('space'),
+            dset.get('den'),
+            dset.get('res'),
+            dset.get('hemi'),
+        )]
+        fn = ANNOTATIONS.fetch(fname=str(fname))
         data.append(str(fn))
 
     # warning for specific maps

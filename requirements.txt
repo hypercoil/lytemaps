@@ -1,5 +1,5 @@
 nibabel>=3.0.0
 numpy>=1.14.0
-requests
+pooch
 scipy>=0.17
 packaging

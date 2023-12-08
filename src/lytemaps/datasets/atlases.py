@@ -6,8 +6,15 @@ Functions for fetching datasets (from the internet, if necessary)
 import os
 from collections import namedtuple
 from pathlib import Path
+from typing import Any, Mapping, Sequence
 
-from .utils import Bunch, _fetch_files, get_data_dir, get_dataset_info
+from pooch import Untar
+
+from .utils import (
+    ATLASES,
+    Bunch,
+    get_data_dir,
+)
 
 SURFACE = namedtuple('Surface', ('L', 'R'))
 ALIAS = dict(
@@ -23,16 +30,16 @@ DENSITIES = dict(
 
 
 _atlas_docs = dict(
-    url="""\
-url : str, optional
-    URL from which to download data. Default: None\
-""",
-    data_dir="""\
-data_dir : str, optional
-    Path to use as data directory. If not specified, will check for
-    environmental variable 'neuromaps_DATA'; if that is not set, will
-    use `~/neuromaps-data` instead. Default: None\
-""",
+#     url="""\
+# url : str, optional
+#     URL from which to download data. Default: None\
+# """,
+#     data_dir="""\
+# data_dir : str, optional
+#     Path to use as data directory. If not specified, will check for
+#     environmental variable 'neuromaps_DATA'; if that is not set, will
+#     use `~/neuromaps-data` instead. Default: None\
+# """,
     verbose="""\
 verbose : int, optional
     Modifies verbosity of download, where higher numbers mean more updates.
@@ -50,7 +57,7 @@ atlas : dict
 )
 
 
-def _sanitize_atlas(atlas):
+def _sanitize_atlas(atlas: str) -> str:
     """ Checks for aliases of `atlas` and confirms valid input
     """
     atlas = ALIAS.get(atlas, atlas)
@@ -59,7 +66,7 @@ def _sanitize_atlas(atlas):
     return atlas
 
 
-def _bunch_outputs(keys, values, surface=True):
+def _bunch_outputs(keys: Any, values: Any, surface: bool = True) -> Bunch:
     """ Groups `values` together (L/R) if `surface` and zips with `keys`
     """
     if surface:
@@ -67,7 +74,12 @@ def _bunch_outputs(keys, values, surface=True):
     return Bunch(**dict(zip(keys, values)))
 
 
-def _fetch_atlas(atlas, density, keys, url=None, data_dir=None, verbose=1):
+def _fetch_atlas(
+    atlas: str,
+    density: str,
+    keys: Sequence[Any],
+    verbose: int = 1,
+) -> Bunch:
     """ Helper function to get requested `atlas`
     """
 
@@ -77,15 +89,10 @@ def _fetch_atlas(atlas, density, keys, url=None, data_dir=None, verbose=1):
         raise ValueError(f'Invalid density: {density}. Must be one of '
                          f'{densities}')
 
-    data_dir = get_data_dir(data_dir=data_dir)
-    info = get_dataset_info(atlas)[density]
-    if url is None:
-        url = info['url']
-    opts = {
-        'uncompress': True,
-        'md5sum': info['md5'],
-        'move': f'{atlas}{density}.tar.gz'
-    }
+    resource_name = f'tpl-{atlas}_granularity-{density}.tar.gz'
+    ATLASES.fetch(
+        resource_name, processor=Untar(extract_dir='.')
+    )
 
     if atlas == 'MNI152':
         filenames = [
@@ -117,19 +124,15 @@ def _fetch_atlas(atlas, density, keys, url=None, data_dir=None, verbose=1):
         keys += ['medial', 'sulc', 'vaavg']
 
     filenames = [os.path.join('atlases', atlas, fn) for fn in filenames]
-    data = [
-        Path(fn) for fn in
-        _fetch_files(data_dir, files=[(f, url, opts) for f in filenames],
-                     verbose=verbose)
-    ]
+    data = [Path(get_data_dir()) / fn for fn in filenames]
 
     return _bunch_outputs(keys, data, atlas != 'MNI152')
 
 
-def fetch_civet(density='41k', url=None, data_dir=None, verbose=1):
+def fetch_civet(density: str = '41k', verbose: int = 1) -> Bunch:
     keys = ['white', 'midthickness', 'inflated', 'veryinflated', 'sphere']
     return _fetch_atlas(
-        'civet', density, keys, url=url, data_dir=data_dir, verbose=verbose
+        'civet', density, keys, verbose=verbose
     )
 
 
@@ -140,8 +143,6 @@ Parameters
 ----------
 density : {{'{densities}'}}, optional
     Density of CIVET atlas to fetch. Default: '41k'
-{url}
-{data_dir}
 {verbose}
 
 Returns
@@ -150,10 +151,10 @@ Returns
 """.format(**_atlas_docs, densities="', '".join(DENSITIES['civet']))
 
 
-def fetch_fsaverage(density='41k', url=None, data_dir=None, verbose=1):
+def fetch_fsaverage(density: str = '41k', verbose: int = 1) -> Bunch:
     keys = ['white', 'pial', 'inflated', 'sphere']
     return _fetch_atlas(
-        'fsaverage', density, keys, url=url, data_dir=data_dir, verbose=verbose
+        'fsaverage', density, keys, verbose=verbose
     )
 
 
@@ -164,8 +165,6 @@ Parameters
 ----------
 density : {{'{densities}'}}, optional
     Density of fsaverage atlas to fetch. Default: '41k'
-{url}
-{data_dir}
 {verbose}
 
 Returns
@@ -174,12 +173,12 @@ Returns
 """.format(**_atlas_docs, densities="', '".join(DENSITIES['fsaverage']))
 
 
-def fetch_fslr(density='32k', url=None, data_dir=None, verbose=1):
+def fetch_fslr(density: str = '32k', verbose: int = 1):
     keys = ['midthickness', 'inflated', 'veryinflated', 'sphere']
     if density in ('4k', '8k'):
         keys.remove('veryinflated')
     return _fetch_atlas(
-        'fsLR', density, keys, url=url, data_dir=data_dir, verbose=verbose
+        'fsLR', density, keys, verbose=verbose
     )
 
 
@@ -190,8 +189,6 @@ Parameters
 ----------
 density : {{'{densities}'}}, optional
     Density of fsLR atlas to fetch. Default: '32k'
-{url}
-{data_dir}
 {verbose}
 
 Returns
@@ -200,14 +197,14 @@ Returns
 """.format(**_atlas_docs, densities="', '".join(DENSITIES['fsLR']))
 
 
-def fetch_mni152(density='1mm', url=None, data_dir=None, verbose=1):
+def fetch_mni152(density: str = '1mm', verbose: int = 1) -> Bunch:
     keys = ['2009cAsym_T1w', '2009cAsym_T2w', '2009cAsym_PD',
             '2009cAsym_brainmask', '2009cAsym_CSF', '2009cAsym_GM',
             '2009cAsym_WM']
     if density in ('1mm', '2mm'):
         keys += ['6Asym_T1w', '6Asym_brainmask']
     return _fetch_atlas(
-        'MNI152', density, keys, url=url, data_dir=data_dir, verbose=verbose
+        'MNI152', density, keys, verbose=verbose
     )
 
 
@@ -218,8 +215,6 @@ Parameters
 ----------
 density : {{'{densities}'}}, optional
     Resolution of MNI152 atlas to fetch. Default: '1mm'
-{url}
-{data_dir}
 {verbose}
 
 Returns
@@ -228,22 +223,16 @@ Returns
 """.format(**_atlas_docs, densities="', '".join(DENSITIES['MNI152']))
 
 
-def fetch_regfusion(atlas, url=None, data_dir=None, verbose=1):
+def fetch_regfusion(atlas: str, verbose: int = 1) -> Bunch:
     atlas = _sanitize_atlas(atlas)
     densities = DENSITIES[atlas].copy()
     invalid = dict(civet=('164k',), fsLR=('4k', '8k'))
     for remove in invalid.get(atlas, []):
         densities.remove(remove)
 
-    data_dir = get_data_dir(data_dir=data_dir)
-    info = get_dataset_info('regfusion')
-    if url is None:
-        url = info['url']
-    opts = {
-        'uncompress': True,
-        'md5sum': info['md5'],
-        'move': 'regfusion.tar.gz'
-    }
+    ATLASES.fetch(
+        'regfusion.tar.gz', processor=Untar(extract_dir='.')
+    )
 
     filenames = [
         'tpl-MNI152_space-{}_den-{}_hemi-{}_regfusion.txt'
@@ -252,12 +241,7 @@ def fetch_regfusion(atlas, url=None, data_dir=None, verbose=1):
         for hemi in ['L', 'R']
     ]
     filenames = [os.path.join('atlases', 'regfusion', fn) for fn in filenames]
-
-    data = [
-        Path(fn) for fn in
-        _fetch_files(data_dir, files=[(f, url, opts) for f in filenames],
-                     verbose=verbose)
-    ]
+    data = [Path(get_data_dir()) / fn for fn in filenames]
     return _bunch_outputs(densities, data)
 
 
@@ -268,8 +252,6 @@ Parameters
 ----------
 atlas : {{'civet', 'fsaverage', 'fsLR'}}
     Atlas to fetch
-{url}
-{data_dir}
 {verbose}
 
 Returns
@@ -279,10 +261,10 @@ regfusion : dict
 """.format(**_atlas_docs)
 
 
-def fetch_atlas(atlas, density, url=None, data_dir=None, verbose=1):
+def fetch_atlas(atlas: str, density: str, verbose: int = 1) -> Bunch:
     atlas = _sanitize_atlas(atlas)
     fetcher = globals()[f'fetch_{atlas.lower()}']
-    return fetcher(density, url=url, data_dir=data_dir, verbose=verbose)
+    return fetcher(density, verbose=verbose)
 
 
 fetch_atlas.__doc__ = """
@@ -294,8 +276,6 @@ atlas : {{'{atlases}'}}
     Atlas to fetch
 density : str
     Density (or resolution) of `atlas`. Must be valid for provided `atlas`
-{url}
-{data_dir}
 {verbose}
 
 Returns
@@ -304,16 +284,16 @@ Returns
 """.format(**_atlas_docs, atlases="', '".join(DENSITIES.keys()))
 
 
-def fetch_all_atlases(data_dir=None, verbose=1):
+def fetch_all_atlases(verbose: int = 1) -> Mapping[str, Mapping[str, Bunch]]:
     atlases = {'regfusion': {}}
     for key, resolutions in DENSITIES.items():
         atlases[key] = {}
         for res in resolutions:
             atlases[key][res] = \
-                fetch_atlas(key, res, data_dir=data_dir, verbose=verbose)
+                fetch_atlas(key, res, verbose=verbose)
         if key != 'MNI152':
             atlases['regfusion'][key] = \
-                fetch_regfusion(key, data_dir=data_dir, verbose=verbose)
+                fetch_regfusion(key, verbose=verbose)
 
     return atlases
 
@@ -323,7 +303,6 @@ Fetches (and caches) all available atlases
 
 Parameters
 ----------
-{data_dir}
 {verbose}
 
 Returns
@@ -333,13 +312,13 @@ atlases : dict
 """
 
 
-def get_atlas_dir(atlas, data_dir=None):
+def get_atlas_dir(atlas: str) -> Path:
     try:
         atlas = _sanitize_atlas(atlas)
     except ValueError as err:
         if atlas != 'regfusion':
             raise err
-    return Path(get_data_dir(data_dir=data_dir)) / 'atlases' / atlas
+    return Path(get_data_dir()) / 'atlases' / atlas
 
 
 get_atlas_dir.__doc__ = """
@@ -349,7 +328,6 @@ Parameters
 ----------
 atlas : str
     Atlas for which filepath should be returned
-{data_dir}
 
 Returns
 -------
