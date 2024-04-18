@@ -136,9 +136,11 @@ def load_nifti(img):
     try:
         img = nib.load(img)
     except (TypeError) as err:
-        msg = ('stat: path should be string, bytes, os.PathLike or integer, '
-               'not Nifti1Image')
-        if not str(err) == msg:
+        if not any([
+            isinstance(img, c)
+            for c in nib.all_image_classes
+            if ('nifti' in repr(c).lower())
+        ]):
             raise err
     return img
 
@@ -169,9 +171,11 @@ def load_gifti(img):
             with gzip.GzipFile(img) as gz:
                 img = nib.GiftiImage.from_bytes(gz.read())
         # it's not a pre-loaded GiftiImage so error out
-        elif (isinstance(err, TypeError)
-              and not str(err) == 'stat: path should be string, bytes, os.'
-                                  'PathLike or integer, not GiftiImage'):
+        elif isinstance(err, TypeError) and (not any([
+            isinstance(img, c)
+            for c in nib.all_image_classes
+            if ('gifti' in repr(c).lower())
+        ])):
             raise err
 
     return img
@@ -208,9 +212,11 @@ def load_data(data):
         out = np.hstack([load_gifti(img).agg_data() for img in data])
     except (AttributeError, TypeError, ValueError, OSError) as err:
         # niimg_like or path_like (nifti)
-        if (isinstance(err, AttributeError)
-            or str(err) == 'stat: path should be string, bytes, os.'
-                           'PathLike or integer, not Nifti1Image'):
+        if (isinstance(err, AttributeError) or any([
+            isinstance(data[0], c)
+            for c in nib.all_image_classes
+            if ('nifti' in repr(c).lower())
+        ])):
             out = np.stack([load_nifti(img).get_fdata() for img in data],
                            axis=3)
         # array_like (parcellated)
